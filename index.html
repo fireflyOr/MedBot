@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedBot - Medical Detective</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; color: #333; }
+        h1 { color: #2c3e50; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        textarea { width: 100%; height: 100px; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; font-family: inherit; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        #finalResponse { padding: 15px; background-color: #e8f6f3; border-left: 4px solid #1abc9c; border-radius: 4px; margin-top: 15px; display: none; }
+        .step-card { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; margin-top: 10px; border-radius: 4px; }
+        .module-badge { display: inline-block; background-color: #34495e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+        .step-label { font-weight: bold; color: #555; font-size: 13px; margin-top: 5px; }
+        .step-content { margin: 2px 0 10px 0; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+        #loading { text-align: center; display: none; color: #7f8c8d; font-style: italic; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>MedBot: Holistic Symptom Navigator</h1>
+
+    <div class="card">
+        <label for="promptInput" style="font-weight: bold; display: block; margin-bottom: 10px;">Enter your symptoms or query:</label>
+        <textarea id="promptInput" placeholder="E.g., I'm experiencing sudden, unexplained anxiety today..."></textarea>
+        <button id="runBtn" onclick="runAgent()">Run Agent</button>
+        <div id="loading">MedBot is investigating... please wait.</div>
+    </div>
+
+    <div class="card" id="resultsContainer" style="display: none;">
+        <h2>Agent Response</h2>
+        <div id="finalResponse"></div>
+
+        <h3 style="margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Execution Trace (Steps)</h3>
+        <div id="stepsContainer"></div>
+    </div>
+
+    <script>
+        async function runAgent() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) return alert("Please enter a prompt.");
+
+            // UI State updates
+            const btn = document.getElementById('runBtn');
+            const loading = document.getElementById('loading');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const finalResponseDiv = document.getElementById('finalResponse');
+            const stepsContainer = document.getElementById('stepsContainer');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            finalResponseDiv.style.display = 'none';
+            stepsContainer.innerHTML = '';
+
+            try {
+                // Call POST /api/execute
+                const response = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                // Handle Error from backend
+                if (data.status === 'error') {
+                    finalResponseDiv.innerHTML = `<span style="color: red;">Error: ${data.error}</span>`;
+                    finalResponseDiv.style.display = 'block';
+                    resultsContainer.style.display = 'block';
+                }
+                // Handle Success
+                else {
+                    // finalResponseDiv.innerHTML = `<strong>Final Diagnosis & Recommendation:</strong><br><br>${data.response}`;
+                    finalResponseDiv.innerHTML = `<strong>Final Diagnosis & Recommendation:</strong><br><br>${data.response.replace(/\n/g, '<br>')}`;
+
+                    finalResponseDiv.style.display = 'block';
+                    resultsContainer.style.display = 'block';
+
+                    // Render Steps
+                    if (data.steps && data.steps.length > 0) {
+                        data.steps.forEach((step, index) => {
+                            const stepHtml = `
+                                <div class="step-card">
+                                    <div class="module-badge">Step ${index + 1}: ${step.module}</div>
+                                    <div class="step-label">Prompt / Input sent to tool:</div>
+                                    <div class="step-content">${typeof step.prompt === 'object' ? JSON.stringify(step.prompt) : step.prompt}</div>
+                                    <div class="step-label">Response / Output from tool:</div>
+                                    <div class="step-content">${typeof step.response === 'object' ? JSON.stringify(step.response) : step.response}</div>
+                                </div>
+                            `;
+                            stepsContainer.innerHTML += stepHtml;
+                        });
+                    } else {
+                        stepsContainer.innerHTML = "<p>No steps recorded.</p>";
+                    }
+                }
+            } catch (err) {
+                alert("Failed to connect to the server. Is FastAPI running?");
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
