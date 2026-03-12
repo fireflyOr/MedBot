@@ -245,7 +245,7 @@ def get_team_info():
         students=[
             Student(name="Tom Shur", email="tom.shur@campus.technion.ac.il"),
             Student(name="Roei Levi", email="roei.levi@campus.technion.ac.il"),
-            Student(name="Or Davidovich", email="or.davidovich@campus.technion.ac.il")
+            Student(name="Or Davidovich", email="ordavidovich@campus.technion.ac.il")
         ]
     )
 
